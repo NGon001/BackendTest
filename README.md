@@ -107,6 +107,24 @@ Future<void> authenticate() async {
 
 
 ```
+
+- This app uses Olama AI with the Llama 3.2 model to generate places dynamically. The request is structured as follows:
+
+```c++
+nlohmann::json payload = {
+  {"model", "llama3.2"},  
+  {"prompt", "Please provide a list of places to visit in " + place + 
+     ". Make sure to give the full name of the place, the specific location, and a detailed description. "
+     "For each place, format the response as follows:\n\n"
+     "1) **place**: [Name of the place]\n"
+     "   **location**: [Detailed location with address or nearby landmarks]\n"
+     "   **description**: [Description of the place]\n"
+     "   **score**: [Score from 0 to 5]\n\n"
+     "Ensure that the names of the places are specific, like including the full name of the place and its exact location, "
+     "not just general terms like 'place'."}
+};
+
+```
 ## API Reference
 
 #### User Signup
