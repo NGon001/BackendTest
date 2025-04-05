@@ -154,28 +154,48 @@ public:
 		return false;
 	}
 
-	bool SignUp(crow::json::rvalue body, sql::Connection* MySQL_Connection)
-	{
-		// Extract body
-		std::string username = body["username"].s();
-		std::string password = body["password"].s();
-		char* hash = tool.bcrypt(password.c_str(),12);
-		std::string gmail = body["gmail"].s();
-		std::string token = tool.generate_jwt(username);
+    bool SignUp(crow::json::rvalue body, sql::Connection* MySQL_Connection, std::string& responce)
+    {
+        // Extract body
+        std::string username = body["username"].s();
+        std::string password = body["password"].s();
+        char* hash = tool.bcrypt(password.c_str(), 12);
+        std::string gmail = body["gmail"].s();
+        std::string token = tool.generate_jwt(username);
 
-		std::unique_ptr<sql::PreparedStatement> pstmt(MySQL_Connection->prepareStatement("INSERT INTO users (gmail, username, password,token) VALUES (?, ?, ?,?)"));
-		pstmt->setString(1, gmail);
-		pstmt->setString(2, username);
-		pstmt->setString(3, hash);
-		pstmt->setString(4, token);
+        try {
+            // Step 1: Check if user already exists
+            std::unique_ptr<sql::PreparedStatement> checkStmt(
+                MySQL_Connection->prepareStatement("SELECT COUNT(*) FROM users WHERE username = ? OR gmail = ?"));
+            checkStmt->setString(1, username);
+            checkStmt->setString(2, gmail);
 
-		// Execute the statement
-		pstmt->executeUpdate();
+            std::unique_ptr<sql::ResultSet> result(checkStmt->executeQuery());
 
+            if (result->next() && result->getInt(1) > 0) {
+                responce = "User already exist!";
+                return false;
+            }
 
-		std::cout << "User " << username << " stored successfully!" << std::endl;
-		return true;
-	}
+            //  Step 2: Insert new user
+            std::unique_ptr<sql::PreparedStatement> insertStmt(
+                MySQL_Connection->prepareStatement("INSERT INTO users (gmail, username, password, token) VALUES (?, ?, ?, ?)"));
+            insertStmt->setString(1, gmail);
+            insertStmt->setString(2, username);
+            insertStmt->setString(3, hash);
+            insertStmt->setString(4, token);
+            insertStmt->executeUpdate();
+
+            responce = "User: " + username + " stored successfully!";
+            std::cout << "User " << username << " stored successfully!" << std::endl;
+            return true;
+        }
+        catch (sql::SQLException& e) {
+            std::cerr << "MySQL Error: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
 
     bool Login(crow::json::rvalue body, sql::Connection* MySQL_Connection,std::string& username)
     {
@@ -264,7 +284,3 @@ public:
     }
 
 };
-
-
-
-
